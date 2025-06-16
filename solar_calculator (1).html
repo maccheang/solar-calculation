@@ -1,0 +1,86 @@
+<div style="max-width: 600px; margin: auto; padding: 20px; font-family: Arial, sans-serif;">
+  <img src="solartech solution.jpg.webp" alt="SolarTech Solution Logo" style="display:block; margin:auto; max-width:200px; margin-bottom:20px;" />
+  <h2 style="text-align:center; color:#0077cc;">🔆 Solar Savings Estimator</h2>
+
+  <label for="bill" style="display:block; margin-bottom:8px; font-size:16px;">Enter your monthly TNB bill (RM):</label>
+  <input type="number" id="bill" placeholder="e.g. 600" style="padding:10px; width:100%; font-size:16px; border:1px solid #ccc; border-radius:5px;" />
+  <button onclick="calculate()" style="margin-top:15px; padding:10px 20px; font-size:16px; background:#0077cc; color:white; border:none; border-radius:5px; cursor:pointer;">Calculate</button>
+
+  <div id="output" style="margin-top:30px;"></div>
+
+  <div style="margin-top:40px; text-align:center; font-size:16px; color:#333;">
+    <p>📞 <strong>Contact Us:</strong></p>
+    <p>Isaac: <a href="tel:0165066333" style="color:#0077cc; text-decoration:none;">016-506 6333</a> | <a href="https://wa.me/60165066333" target="_blank" style="color:#25D366; text-decoration:none;">WhatsApp</a></p>
+    <p>Mac: <a href="tel:0187687287" style="color:#0077cc; text-decoration:none;">018-768 7287</a> | <a href="https://wa.me/60187687287" target="_blank" style="color:#25D366; text-decoration:none;">WhatsApp</a></p>
+  </div>
+</div>
+
+<script>
+function calculate() {
+  const bill = parseFloat(document.getElementById("bill").value);
+  if (isNaN(bill) || bill <= 0) {
+    document.getElementById("output").innerHTML = '<p style="color:red;">Please enter a valid bill amount.</p>';
+    return;
+  }
+
+  const kWh = bill / 0.5;
+  let systemSize = kWh / 130;
+
+  const lowerBound = Math.floor(systemSize);
+  if (systemSize >= lowerBound + 0.23) {
+    systemSize = lowerBound + 1;
+  }
+
+  const panelKW = 0.62;
+  const numPanels = Math.ceil(systemSize / panelKW);
+  const savings = (bill * 0.85).toFixed(2);
+  const estCost = "RM " + (systemSize * 3900).toFixed(0);
+  const roofSpace = (numPanels * 4 * 8).toFixed(0);
+
+  document.getElementById("output").innerHTML = `
+  <table style="width: 100%; border-collapse: collapse; font-size: 16px;">
+    <thead>
+      <tr style="background-color: #f2f2f2;">
+        <th style="text-align: left; padding: 10px; border: 1px solid #ccc;">Item</th>
+        <th style="text-align: left; padding: 10px; border: 1px solid #ccc;">Value</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td style="padding: 10px; border: 1px solid #ccc;">📊 Estimated Monthly Usage</td>
+        <td style="padding: 10px; border: 1px solid #ccc; color: #0077cc;">${kWh.toFixed(0)} kWh</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px; border: 1px solid #ccc;">🔋 Recommended System Size</td>
+        <td style="padding: 10px; border: 1px solid #ccc; color: #0077cc;">${systemSize.toFixed(2)} kW</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px; border: 1px solid #ccc;">🔧 Estimated Number of 620W Panels</td>
+        <td style="padding: 10px; border: 1px solid #ccc; color: #0077cc;">${numPanels} units</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px; border: 1px solid #ccc;">📐 Total Roof Space Needed</td>
+        <td style="padding: 10px; border: 1px solid #ccc; color: #0077cc;">${roofSpace} sq ft <em>(4' x 8' per panel)</em></td>
+      </tr>
+      <tr>
+        <td style="padding: 10px; border: 1px solid #ccc;">💰 Estimated Monthly Savings</td>
+        <td style="padding: 10px; border: 1px solid #ccc; color: green; font-weight: bold;">RM ${savings}</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px; border: 1px solid #ccc;">💼 Estimated System Cost</td>
+        <td style="padding: 10px; border: 1px solid #ccc; color: #ff5722; font-weight: bold;">${estCost}</td>
+      </tr>
+    </tbody>
+  </table>
+  <div style="margin-top: 20px; font-size: 16px;">
+    <p><strong>📘 Quick Reference (System Size ≈ Roof Space):</strong></p>
+    <ul>
+      <li>🔹 5kW ≈ 288 sq ft</li>
+      <li>🔹 10kW ≈ 544 sq ft</li>
+      <li>🔹 15kW ≈ 800 sq ft</li>
+      <li>🔹 20kW ≈ 1056 sq ft</li>
+    </ul>
+  </div>
+  `;
+}
+</script>
