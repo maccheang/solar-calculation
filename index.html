@@ -104,6 +104,12 @@
     <img src="logo.jpg" alt="SolarTech Solution Logo" class="logo" />
     <h2>🔆 Solar Savings Estimator</h2>
 
+    <label for="customer">Customer Name:</label>
+    <input type="text" id="customer" placeholder="e.g. John Tan" />
+
+    <label for="location">Installation Location:</label>
+    <input type="text" id="location" placeholder="e.g. Johor Bahru" />
+
     <label for="bill">Enter your monthly TNB bill (RM):</label>
     <input type="number" id="bill" placeholder="e.g. 600" />
     <button onclick="calculate()">Calculate</button>
@@ -119,6 +125,8 @@
 
   <script>
     function calculate() {
+      const customer = document.getElementById("customer").value || "N/A";
+      const location = document.getElementById("location").value || "N/A";
       const bill = parseFloat(document.getElementById("bill").value);
       if (isNaN(bill) || bill <= 0) {
         document.getElementById("output").innerHTML = '<p style="color:red;">Please enter a valid bill amount.</p>';
@@ -140,6 +148,8 @@
       const roofSpace = (numPanels * 4 * 8).toFixed(0);
 
       document.getElementById("output").innerHTML = `
+        <p><strong>👤 Customer Name:</strong> ${customer}<br>
+        <strong>📍 Location:</strong> ${location}</p>
         <table>
           <tr><th>Item</th><th>Value</th></tr>
           <tr><td>📊 Estimated Monthly Usage</td><td>${kWh.toFixed(0)} kWh</td></tr>
