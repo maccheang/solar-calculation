@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SolarTech Estimator</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f1f8fc;
+      padding: 20px;
+      color: #333;
+    }
+    .container {
+      max-width: 700px;
+      margin: auto;
+      background: #fff;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    h2 {
+      text-align: center;
+      color: #0077cc;
+      margin-bottom: 20px;
+    }
+    label, input, button {
+      display: block;
+      width: 100%;
+      margin-top: 10px;
+      font-size: 16px;
+    }
+    input {
+      padding: 10px;
+      margin-bottom: 15px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+    button {
+      background-color: #0077cc;
+      color: white;
+      padding: 12px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    button:hover {
+      background-color: #005fa3;
+    }
+    #output {
+      display: none;
+      margin-top: 30px;
+      font-size: 16px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+    th, td {
+      padding: 10px;
+      border: 1px solid #ddd;
+    }
+    th {
+      background: #f4f4f4;
+      text-align: left;
+    }
+    .contact {
+      margin-top: 30px;
+      font-size: 16px;
+    }
+    .contact a {
+      color: #0077cc;
+      text-decoration: none;
+    }
+    .ref {
+      margin-top: 20px;
+      font-size: 15px;
+    }
+    .ref ul {
+      padding-left: 20px;
+    }
+    #screenshotBtn {
+      margin-top: 25px;
+      background: #28a745;
+    }
+    .loading {
+      color: #666;
+      font-style: italic;
+    }
+    .error {
+      color: #cc3300;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div style="text-align:center;">
+      <img src="logo.jpg" alt="SolarTech Logo" style="max-width:160px; border-radius:10px; margin-bottom:10px;" onerror="this.style.display='none'">
+      <h2>🔆 Solar Savings Estimator</h2>
+    </div>
+
+    <div id="formArea">
+      <label for="customer">Customer Name:</label>
+      <input type="text" id="customer" placeholder="e.g. John Tan">
+
+      <label for="location">Installation Location:</label>
+      <input type="text" id="location" placeholder="Detecting location..." readonly>
+      <small id="locationStatus" class="loading">Detecting your location...</small>
+
+      <label for="bill">Enter your monthly TNB bill (RM):</label>
+      <input type="number" id="bill" placeholder="e.g. 600" min="1">
+
+      <button onclick="calculate()">Calculate Savings</button>
+    </div>
+
+    <div id="output"></div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script>
+    // Geolocation detection
+    window.onload = function() {
+      const locationInput = document.getElementById("location");
+      const locationStatus = document.getElementById("locationStatus");
+      
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          function(pos) {
+            const lat = pos.coords.latitude.toFixed(6);
+            const lon = pos.coords.longitude.toFixed(6);
+            
+            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`)
+              .then(res => res.json())
+              .then(data => {
+                const address = data.display_name || "Detected location";
+                locationInput.value = `(${lat}, ${lon}) ${address}`;
+                locationStatus.textContent = "Location detected";
+                locationStatus.className = "";
+              })
+              .catch(() => {
+                locationInput.value = `(${lat}, ${lon})`;
+                locationStatus.textContent = "Coordinates detected (address lookup failed)";
+                locationStatus.className = "";
+              });
+          },
+          function(error) {
+            locationStatus.textContent = "Location detection failed (permission denied or unavailable)";
+            locationStatus.className = "error";
+            locationInput.placeholder = "Enter location manually";
+            locationInput.readOnly = false;
+          }
+        );
+      } else {
+        locationStatus.textContent = "Geolocation not supported by your browser";
+        locationStatus.className = "error";
+        locationInput.placeholder = "Enter location manually";
+        locationInput.readOnly = false;
+      }
+    };
+
+    function calculate() {
+      const customer = document.getElementById("customer").value.trim() || "N/A";
+      const location = document.getElementById("location").value.trim() || "N/A";
+      const bill = parseFloat(document.getElementById("bill").value);
+
+      if (isNaN(bill) || bill <= 0) {
+        alert("Please enter a valid bill amount (greater than 0).");
+        return;
+      }
+
+      // Calculation logic
+      const kWh = bill / 0.5; // Assuming RM 0.50 per kWh
+      let systemSize = kWh / 130; // 130 kWh per kW per month
+      
+      // Round up system size if more than 0.23 over the lower bound
+      const lowerBound = Math.floor(systemSize);
+      if (systemSize >= lowerBound + 0.23) {
+        systemSize = lowerBound + 1;
+      } else {
+        systemSize = lowerBound + 0.5; // Allow half sizes
+      }
+
+      const panelKW = 0.62; // 620W panels
+      const numPanels = Math.ceil(systemSize / panelKW);
+      const savings = (bill * 0.85).toFixed(2); // 85% savings estimate
+      const estCost = "RM " + (systemSize * 3900).toLocaleString("en-MY");
+      const roofSpace = (numPanels * 4 * 2).toFixed(0); // Each panel ~4x2 ft
+
+      // Hide form and show results
+      document.getElementById("formArea").style.display = "none";
+      const output = document.getElementById("output");
+      output.style.display = "block";
+      
+      output.innerHTML = `
+        <h3>📋 Result Summary</h3>
+        <table>
+          <tr><th>Customer Name</th><td>${customer}</td></tr>
+          <tr><th>Location</th><td>${location}</td></tr>
+          <tr><th>TNB Bill Amount</th><td>RM ${bill.toFixed(2)}</td></tr>
+          <tr><th>Estimated Monthly Usage</th><td>${kWh.toFixed(0)} kWh</td></tr>
+          <tr><th>Recommended System Size</th><td>${systemSize.toFixed(2)} kW</td></tr>
+          <tr><th>Estimated No. of 620W Panels</th><td>${numPanels} units</td></tr>
+          <tr><th>Roof Space Needed</th><td>${roofSpace} sq ft</td></tr>
+          <tr><th>Estimated Monthly Savings</th><td style="color:green; font-weight:bold;">RM ${savings}</td></tr>
+          <tr><th>Estimated System Cost</th><td style="color:#cc3300; font-weight:bold;">${estCost}</td></tr>
+        </table>
+
+        <div class="contact">
+          <p><strong>📞 Contact Us:</strong></p>
+          <p>Isaac: <a href="tel:0165066333">016-506 6333</a> | <a href="https://wa.me/60165066333" target="_blank">WhatsApp</a></p>
+          <p>Mac: <a href="tel:0187687287">018-768 7287</a> | <a href="https://wa.me/60187687287" target="_blank">WhatsApp</a></p>
+        </div>
+
+        <button id="screenshotBtn" onclick="captureScreenshot()">📸 Capture Full Screenshot</button>
+        <div id="canvasContainer"></div>
+
+        <div class="ref">
+          <p><strong>📘 Quick Reference (System Size ≈ Panels ≈ Roof Space):</strong></p>
+          <ul>
+            <li>🔹 3.72kW ≈ 6 panels ≈ 48 sq ft</li>
+            <li>🔹 5kW ≈ 8 panels ≈ 64 sq ft</li>
+            <li>🔹 7.44kW ≈ 12 panels ≈ 96 sq ft</li>
+            <li>🔹 10kW ≈ 16 panels ≈ 128 sq ft</li>
+            <li>🔹 15kW ≈ 24 panels ≈ 192 sq ft</li>
+            <li>🔹 20kW ≈ 32 panels ≈ 256 sq ft</li>
+          </ul>
+        </div>
+      `;
+    }
+
+    function captureScreenshot() {
+      html2canvas(document.querySelector(".container")).then(canvas => {
+        const link = document.createElement("a");
+        link.download = "solar_estimate_" + new Date().toISOString().slice(0,10) + ".png";
+        link.href = canvas.toDataURL();
+        link.click();
+      });
+    }
+  </script>
+</body>
+</html>
