@@ -1,0 +1,201 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SolarTech Solution Estimator</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to right, #e0f7fa, #ffffff);
+      color: #333;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 700px;
+      margin: auto;
+      background: #fff;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.1);
+    }
+
+    img.logo {
+      display: block;
+      margin: 0 auto 20px;
+      max-width: 160px;
+      border-radius: 12px;
+    }
+
+    h2 {
+      text-align: center;
+      color: #0077cc;
+      margin-bottom: 20px;
+    }
+
+    label, input, button {
+      font-size: 16px;
+      display: block;
+      width: 100%;
+    }
+
+    input {
+      padding: 10px;
+      margin: 10px 0 20px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+
+    button {
+      background-color: #0077cc;
+      color: white;
+      border: none;
+      padding: 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #005fa3;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+
+    th, td {
+      padding: 12px;
+      border: 1px solid #ddd;
+    }
+
+    th {
+      background-color: #f4f4f4;
+    }
+
+    ul {
+      padding-left: 20px;
+    }
+
+    .contact {
+      text-align: center;
+      margin-top: 40px;
+      font-size: 16px;
+    }
+
+    .contact a {
+      color: #0077cc;
+      text-decoration: none;
+      margin: 0 8px;
+    }
+
+    .contact a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body onload="getLocation()">
+  <div class="container">
+    <img src="logo.jpg" alt="SolarTech Solution Logo" class="logo" />
+    <h2>🔆 Solar Savings Estimator</h2>
+
+    <label for="customer">Customer Name:</label>
+    <input type="text" id="customer" placeholder="e.g. John Tan" />
+
+    <label for="location">Installation Location:</label>
+    <input type="text" id="location" placeholder="Auto-detecting..." />
+
+    <label for="bill">Enter your monthly TNB bill (RM):</label>
+    <input type="number" id="bill" placeholder="e.g. 600" />
+    <button onclick="calculate()">Calculate</button>
+
+    <div id="output"></div>
+
+    <div class="contact">
+      <p>📞 <strong>Contact Us:</strong></p>
+      <p>Isaac: <a href="tel:0165066333">016-506 6333</a> | <a href="https://wa.me/60165066333" target="_blank" style="color:#25D366;">WhatsApp</a></p>
+      <p>Mac: <a href="tel:0187687287">018-768 7287</a> | <a href="https://wa.me/60187687287" target="_blank" style="color:#25D366;">WhatsApp</a></p>
+    </div>
+  </div>
+
+  <script>
+    function getLocation() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(position) {
+          const lat = position.coords.latitude.toFixed(6);
+          const lon = position.coords.longitude.toFixed(6);
+
+          // 使用 Nominatim API 获取地址
+          fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`)
+            .then(response => response.json())
+            .then(data => {
+              const address = data.display_name || (lat + ", " + lon);
+              document.getElementById("location").value = address;
+            })
+            .catch(error => {
+              console.warn("Reverse geocoding failed:", error);
+              document.getElementById("location").value = lat + ", " + lon;
+            });
+
+        }, function(error) {
+          console.warn("Location access denied or unavailable.");
+        });
+      } else {
+        console.warn("Geolocation not supported.");
+      }
+    }
+
+    function calculate() {
+      const customer = document.getElementById("customer").value || "N/A";
+      const location = document.getElementById("location").value || "N/A";
+      const bill = parseFloat(document.getElementById("bill").value);
+      if (isNaN(bill) || bill <= 0) {
+        document.getElementById("output").innerHTML = '<p style="color:red;">Please enter a valid bill amount.</p>';
+        return;
+      }
+
+      const kWh = bill / 0.5;
+      let systemSize = kWh / 130;
+
+      const lowerBound = Math.floor(systemSize);
+      if (systemSize >= lowerBound + 0.23) {
+        systemSize = lowerBound + 1;
+      }
+
+      const panelKW = 0.62;
+      const numPanels = Math.ceil(systemSize / panelKW);
+      const savings = (bill * 0.85).toFixed(2);
+      const estCost = "RM " + (systemSize * 3900).toFixed(0);
+      const roofSpace = (numPanels * 4 * 8).toFixed(0);
+
+      document.getElementById("output").innerHTML = `
+        <p><strong>👤 Customer Name:</strong> ${customer}<br>
+        <strong>📍 Location:</strong> ${location}</p>
+        <table>
+          <tr><th>Item</th><th>Value</th></tr>
+          <tr><td>📊 Estimated Monthly Usage</td><td>${kWh.toFixed(0)} kWh</td></tr>
+          <tr><td>🔋 Recommended System Size</td><td>${systemSize.toFixed(2)} kW</td></tr>
+          <tr><td>🔧 Estimated Number of 620W Panels</td><td>${numPanels} units</td></tr>
+          <tr><td>📐 Total Roof Space Needed</td><td>${roofSpace} sq ft <em>(4' x 8' per panel)</em></td></tr>
+          <tr><td>💰 Estimated Monthly Savings</td><td style="color:green; font-weight:bold;">RM ${savings}</td></tr>
+          <tr><td>💼 Estimated System Cost</td><td style="color:#ff5722; font-weight:bold;">${estCost}</td></tr>
+        </table>
+        <div style="margin-top: 20px;">
+          <p><strong>📘 Quick Reference (System Size ≈ Roof Space):</strong></p>
+          <ul>
+            <li>🔹 5kW ≈ 288 sq ft</li>
+            <li>🔹 10kW ≈ 544 sq ft</li>
+            <li>🔹 15kW ≈ 800 sq ft</li>
+            <li>🔹 20kW ≈ 1056 sq ft</li>
+          </ul>
+        </div>
+      `;
+    }
+  </script>
+</body>
+</html>
