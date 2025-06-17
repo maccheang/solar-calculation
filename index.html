@@ -1,0 +1,206 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SolarTech Estimator</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f1f8fc;
+      padding: 20px;
+      color: #333;
+    }
+    .container {
+      max-width: 700px;
+      margin: auto;
+      background: #fff;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    h2 {
+      text-align: center;
+      color: #0077cc;
+      margin-bottom: 20px;
+    }
+    label, input, button {
+      display: block;
+      width: 100%;
+      margin-top: 10px;
+      font-size: 16px;
+    }
+    input {
+      padding: 10px;
+      margin-bottom: 15px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+    button {
+      background-color: #0077cc;
+      color: white;
+      padding: 12px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    #output {
+      display: none;
+      margin-top: 30px;
+      font-size: 16px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+    th, td {
+      padding: 10px;
+      border: 1px solid #ddd;
+    }
+    th {
+      background: #f4f4f4;
+      text-align: left;
+    }
+    .contact {
+      margin-top: 30px;
+      font-size: 16px;
+    }
+    .contact a {
+      color: #0077cc;
+      text-decoration: none;
+    }
+    .ref {
+      margin-top: 20px;
+      font-size: 15px;
+    }
+    .ref ul {
+      padding-left: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div style="text-align:center;">
+      <img src="logo.jpg" alt="SolarTech Logo" style="max-width:160px; border-radius:10px; margin-bottom:10px;">
+      <h2>🔆 Solar Savings Estimator</h2>
+    </div>
+
+    <div id="formArea">
+      <label for="customer">Customer Name:</label>
+      <input type="text" id="customer" placeholder="e.g. John Tan">
+
+      <label for="location">Installation Location:</label>
+      <input type="text" id="location" placeholder="Detecting..." readonly>
+
+      <label for="bill">Enter your monthly TNB bill (RM):</label>
+      <input type="number" id="bill" placeholder="e.g. 600">
+
+      <button onclick="calculate()">Calculate</button>
+    </div>
+
+    <div id="output"></div>
+  </div>
+
+  <script>
+    window.onload = function() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(pos) {
+          const lat = pos.coords.latitude.toFixed(6);
+          const lon = pos.coords.longitude.toFixed(6);
+          fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`)
+            .then(res => res.json())
+            .then(data => {
+              const address = data.display_name || "Detected";
+              document.getElementById("location").value = `(${lat}, ${lon}) ${address}`;
+            })
+            .catch(() => {
+              document.getElementById("location").value = `(${lat}, ${lon})`;
+            });
+        });
+      }
+    };
+
+    function calculate() {
+      const customer = document.getElementById("customer").value || "N/A";
+      const location = document.getElementById("location").value || "N/A";
+      const bill = parseFloat(document.getElementById("bill").value);
+
+      if (isNaN(bill) || bill <= 0) {
+        alert("Please enter a valid bill amount.");
+        return;
+      }
+
+      const kWh = bill / 0.5;
+      let systemSize = kWh / 130;
+      const lowerBound = Math.floor(systemSize);
+      if (systemSize >= lowerBound + 0.23) {
+        systemSize = lowerBound + 1;
+      }
+
+      const panelKW = 0.62;
+      const numPanels = Math.ceil(systemSize / panelKW);
+      const savings = (bill * 0.85).toFixed(2);
+      const estCost = "RM " + (systemSize * 3900).toLocaleString("en-MY");
+      const roofSpace = (numPanels * 4 * 8).toFixed(0);
+
+      document.getElementById("formArea").style.display = "none";
+      const output = document.getElementById("output");
+      output.style.display = "block";
+      output.innerHTML = `
+        <h3>📋 Result Summary</h3>
+        <table>
+          <tr><th>Customer Name</th><td>${customer}</td></tr>
+          <tr><th>Location</th><td>${location}</td></tr>
+          <tr><th>TNB Bill Amount</th><td>RM ${bill.toFixed(2)}</td></tr>
+          <tr><th>Estimated Monthly Usage</th><td>${kWh.toFixed(0)} kWh</td></tr>
+          <tr><th>Recommended System Size</th><td>${systemSize.toFixed(2)} kW</td></tr>
+          <tr><th>Estimated No. of 620W Panels</th><td>${numPanels} units</td></tr>
+          <tr><th>Roof Space Needed</th><td>${roofSpace} sq ft</td></tr>
+          <tr><th>Estimated Monthly Savings</th><td style="color:green; font-weight:bold;">RM ${savings}</td></tr>
+          <tr><th>Estimated System Cost</th><td style="color:#cc3300; font-weight:bold;">${estCost}</td></tr>
+        </table>
+
+        <div class="contact">
+          <p><strong>📞 Contact Us:</strong></p>
+          <p>Isaac: <a href="tel:0165066333">016-506 6333</a> | <a href="https://wa.me/60165066333" target="_blank">WhatsApp</a></p>
+          <p>Mac: <a href="tel:0187687287">018-768 7287</a> | <a href="https://wa.me/60187687287" target="_blank">WhatsApp</a></p>
+        
+        <button id="screenshotBtn" style="margin-top:25px; background:#28a745;">📸 Capture Full Screenshot</button>
+        <div id="canvasContainer"></div>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+        <script>
+          setTimeout(() => {
+            const btn = document.getElementById("screenshotBtn");
+            if (btn) {
+              btn.addEventListener("click", () => {
+                html2canvas(document.querySelector(".container")).then(canvas => {
+                  const link = document.createElement("a");
+                  link.download = "solar_result.png";
+                  link.href = canvas.toDataURL();
+                  link.click();
+                });
+              });
+            }
+          }, 1000);
+        </script>
+      </div>
+
+        <div class="ref">
+    
+          <p><strong>📘 Quick Reference (System Size ≈ Panels ≈ Roof Space):</strong></p>
+          <ul>
+            <li>🔹 3.72kW ≈ 6 panels (4x8 ft each)</li>
+            <li>🔹 5kW ≈ 8 panels ≈ 288 sq ft</li>
+            <li>🔹 7.44kW ≈ 12 panels ≈ 384 sq ft</li>
+            <li>🔹 10kW ≈ 16 panels ≈ 544 sq ft</li>
+            <li>🔹 15kW ≈ 24 panels ≈ 800 sq ft</li>
+            <li>🔹 20kW ≈ 32 panels ≈ 1056 sq ft</li>
+          </ul>
+        </div>
+      `;
+    }
+  </script>
+</body>
+</html>
