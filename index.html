@@ -1,0 +1,245 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>SolarTech Estimator</title>
+<link href="https://unpkg.com/leaflet/dist/leaflet.css" rel="stylesheet"/>
+<style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f1f8fc;
+      padding: 20px;
+      color: #333;
+    }
+    .container {
+      max-width: 700px;
+      margin: auto;
+      background: #fff;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    h2 {
+      text-align: center;
+      color: #0077cc;
+      margin-bottom: 20px;
+    }
+    label, input, button {
+      display: block;
+      width: 100%;
+      margin-top: 10px;
+      font-size: 16px;
+    }
+    input {
+      padding: 10px;
+      margin-bottom: 15px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+    button {
+      background-color: #0077cc;
+      color: white;
+      padding: 12px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    #output {
+      display: none;
+      margin-top: 30px;
+      font-size: 16px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+    th, td {
+      padding: 10px;
+      border: 1px solid #ddd;
+    }
+    th {
+      background: #f4f4f4;
+      text-align: left;
+    }
+    .contact {
+      margin-top: 30px;
+      font-size: 16px;
+    }
+    .contact a {
+      color: #0077cc;
+      text-decoration: none;
+    }
+    .ref {
+      margin-top: 20px;
+      font-size: 15px;
+    }
+    .ref ul {
+      padding-left: 20px;
+    }
+    #roofMap {
+      height: 400px;
+      width: 100%;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      margin-top: 20px;
+    }
+  </style>
+<style>
+.text-labels {
+  font-size: 16px;
+  color: black;
+  text-align: center;
+}
+</style></head>
+<body>
+<div style="margin: 10px;">
+<label for="angleInput"><strong>Rotation (degrees):</strong></label>
+<input id="angleInput" placeholder="0" style="width: 80px;" type="number" value="0"/>
+</div>
+<div class="container">
+<div style="text-align:center;">
+<img alt="SolarTech Logo" src="logo.jpg" style="max-width:160px; border-radius:10px; margin-bottom:10px;"/>
+<h2>🔆 Solar Savings Estimator</h2>
+</div>
+<div id="formArea">
+<label for="customer">Customer Name:</label>
+<input id="customer" placeholder="e.g. John Tan" type="text"/>
+<label for="location">Installation Location:</label>
+<input id="location" placeholder="Detecting..." readonly="" type="text"/>
+<label for="bill">Enter your monthly TNB bill (RM):</label>
+<input id="bill" placeholder="e.g. 600" type="number"/>
+<button onclick="calculate()">Calculate</button>
+</div>
+<div id="output"></div>
+</div>
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+    window.onload = function() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(pos) {
+          const lat = pos.coords.latitude.toFixed(6);
+          const lon = pos.coords.longitude.toFixed(6);
+          fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`)
+            .then(res => res.json())
+            .then(data => {
+              const address = data.display_name || "Detected";
+              document.getElementById("location").value = `(${lat}, ${lon}) ${address}`;
+            })
+            .catch(() => {
+              document.getElementById("location").value = `(${lat}, ${lon})`;
+            });
+        });
+      }
+    };
+
+    function calculate() {
+      const customer = document.getElementById("customer").value || "N/A";
+      const location = document.getElementById("location").value || "N/A";
+      const bill = parseFloat(document.getElementById("bill").value);
+
+      if (isNaN(bill) || bill <= 0) {
+        alert("Please enter a valid bill amount.");
+        return;
+      }
+
+      const kWh = bill / 0.5;
+      let systemSize = kWh / 130;
+      const lowerBound = Math.floor(systemSize);
+      if (systemSize >= lowerBound + 0.23) {
+        systemSize = lowerBound + 1;
+      }
+
+      const panelKW = 0.62;
+      const numPanels = Math.ceil(systemSize / panelKW);
+      const estCost = "RM " + (systemSize * (
+        systemSize >= 10 ? 2850 :
+        systemSize >= 9 ? 3100 :
+        systemSize >= 8 ? 3400 :
+        systemSize >= 7 ? 3600 :
+        systemSize >= 6 ? 4000 :
+        systemSize >= 5 ? 4500 : 5000
+      )).toLocaleString("en-MY");
+
+      const roofSpace = (numPanels * 4 * 8).toFixed(0);
+
+      document.getElementById("formArea").style.display = "none";
+      const output = document.getElementById("output");
+      output.style.display = "block";
+      let panelCount = numPanels;
+output.innerHTML = `
+        <h3>📋 Result Summary</h3>
+        <table>
+          <tr><th>Customer Name</th><td>${customer}</td></tr>
+          <tr><th>Location</th><td>${location}</td></tr>
+          <tr><th>Current TNB Bill</th><td>RM ${bill.toFixed(2)}</td></tr>
+          <tr><th>Estimated Monthly Usage</th><td>${kWh.toFixed(0)} kWh</td></tr>
+          <tr><th>Inverter Size</th><td>${systemSize.toFixed(2)} kW</td></tr>
+          <tr><th>Estimated No. of 620W Panels</th><td>${numPanels} units</td></tr>
+          <tr><th>Daily Energy Production</th><td style="color:green; font-weight:bold;">≈ ${numPanels} panel × 0.62 × 4hrs = ${(numPanels * 0.62 * 4).toFixed(2)} kWh/day</td></tr>
+          <tr><th>Estimated Monthly Savings</th><td style="color:green; font-weight:bold;">≈ ${(numPanels * 0.62 * 4 * 30).toFixed(2)} kWh/month ≈ RM ${(numPanels * 0.62 * 4 * 30 * 0.5).toFixed(2)}</td></tr>
+          <tr><th>Roof Space Needed</th><td>${roofSpace} sq ft</td></tr>
+          <tr><th>Estimated System Cost</th><td style="color:#cc3300; font-weight:bold;">${estCost}</td></tr>
+        </table>
+
+        <div id="roofMap"></div>
+      `;
+
+      setTimeout(() => {
+        const match = location.match(/\(([-\d.]+),\s*([-\d.]+)\)/);
+        if (match) {
+          const lat = parseFloat(match[1]);
+          const lng = parseFloat(match[2]);
+          const map = L.map('roofMap').setView([lat, lng], 22);
+          const mapboxToken = 'pk.eyJ1IjoibWFjY2hlYW5nNzY4NyIsImEiOiJjbWM3ZHB0cnMwa2ozMm9xMjV6YmM1Mnc0In0.9OOlFHdyLY7SlPphMQt6XQ';
+          L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/satellite-v9/tiles/{z}/{x}/{y}?access_token=${mapboxToken}`, {
+            tileSize: 512,
+            zoomOffset: -1,
+            attribution: '&copy; <a href="https://www.mapbox.com/">Mapbox</a>'
+          }).addTo(map);
+          L.marker([lat, lng]).addTo(map).bindPopup("Your Roof").openPopup();
+const total = panelCount;
+const panelLat = 1.0983783783783784e-05;
+const panelLng = 2.1999760469879377e-05;
+const perRow = 2;
+const rows = Math.ceil(total / perRow);
+for (let r = 0; r < rows; r++) {
+  for (let c = 0; c < perRow; c++) {
+    const index = r * perRow + c;
+    if (index >= total) break;
+    const offsetLat = lat - (r * panelLat);
+    const offsetLng = lng + (c * panelLng);
+    const bounds = [
+      [offsetLat, offsetLng],
+      [offsetLat + panelLat, offsetLng + panelLng]
+    ];
+    L.imageOverlay('https://i.imgur.com/VV3lhCl.png', bounds, {
+      opacity: 0.9,
+      interactive: false
+    }).addTo(map);
+  }
+}
+
+    map.scrollWheelZoom.enable();
+    map.touchZoom.enable();
+    map.dragging.enable();
+    L.control.zoom({ position: 'topright' }).addTo(map);
+        }
+      }, 300);
+    }
+  </script>
+<script>document.addEventListener('DOMContentLoaded', moveToLatLng);</script><script>
+document.addEventListener('DOMContentLoaded', function() {
+  const center = map.getCenter();
+  const north = [center.lat + 0.0005, center.lng];
+  const south = [center.lat - 0.0005, center.lng];
+
+  L.polyline([south, north], {color: 'red', weight: 2, dashArray: '5,5'}).addTo(map);
+  L.marker(north, {icon: L.divIcon({className: 'text-labels', html: '<b>N</b>', iconSize: [20, 20]})}).addTo(map);
+  L.marker(south, {icon: L.divIcon({className: 'text-labels', html: '<b>S</b>', iconSize: [20, 20]})}).addTo(map);
+});
+</script></body>
+</html>
