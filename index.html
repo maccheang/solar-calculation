@@ -156,8 +156,7 @@
       document.getElementById("formArea").style.display = "none";
       const output = document.getElementById("output");
       output.style.display = "block";
-      output.innerHTML += `
-        <h3>📍 Roof Map (Satellite View)</h3>
+      // moved map rendering below
         <div id="roofMap" style="height: 400px; width: 100%; border: 1px solid #ccc; border-radius: 8px; margin-top:20px;"></div>
       `;
 
@@ -209,6 +208,27 @@
 
 
         </table>
+      output.innerHTML += `
+        <h3>📍 Roof Map (Satellite View)</h3>
+        <div id="roofMap" style="height: 400px; width: 100%; border: 1px solid #ccc; border-radius: 8px; margin-top:20px;"></div>
+      `;
+
+      setTimeout(() => {
+        const match = location.match(/\(([-\d.]+),\s*([-\d.]+)\)/);
+        if (match) {
+          const lat = parseFloat(match[1]);
+          const lng = parseFloat(match[2]);
+          const map = L.map('roofMap').setView([lat, lng], 20);
+          const mapboxToken = 'pk.eyJ1IjoibWFjY2hlYW5nNzY4NyIsImEiOiJjbWM3ZHB0cnMwa2ozMm9xMjV6YmM1Mnc0In0.9OOlFHdyLY7SlPphMQt6XQ';
+          L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/satellite-v9/tiles/{z}/{x}/{y}?access_token=${mapboxToken}`, {
+            tileSize: 512,
+            zoomOffset: -1,
+            attribution: '&copy; <a href="https://www.mapbox.com/">Mapbox</a>',
+          }).addTo(map);
+          L.marker([lat, lng]).addTo(map).bindPopup("Your Roof").openPopup();
+        }
+      }, 300);
+
 
         <div class="contact">
           <p><strong>📞 Contact Us:</strong></p>
